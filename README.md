@@ -1,6 +1,7 @@
-# Blender with CUDA Support (NixOS 24.11)
+# Blender with CUDA Support (NixOS 25.05)
 
-This repository provides a Nix flake to build Blender with CUDA acceleration using NixOS 24.11 packages.
+This repository provides a Nix flake to build Blender with CUDA acceleration using NixOS 25.05 packages.
+Since blender with CUDA support is a pain to compile from source, I use GHA to build the package and upload it to Cachix.
 
 ### Requirements
 - x86_64 Linux system
