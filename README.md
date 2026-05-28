@@ -1,6 +1,6 @@
-# Blender with CUDA Support (NixOS 25.11)
+# Blender with CUDA Support (NixOS 26.05)
 
-This repository provides a Nix flake to build Blender with CUDA acceleration using NixOS 25.11 packages.
+This repository provides a Nix flake to build Blender with CUDA acceleration using NixOS 26.05 packages.
 Since blender with CUDA support is a pain to compile from source, I use GHA to build the package and upload it to Cachix.
 
 ### Binary Cache (Cachix)
@@ -26,7 +26,7 @@ Alternatively, add the following to your Nix configuration:
 
 Available package outputs:
 
-- `blender-with-cuda` / `blender-with-cuda-stable`: stable Blender from NixOS 25.11
+- `blender-with-cuda` / `blender-with-cuda-stable`: stable Blender from NixOS 26.05
 - `blender-with-cuda-unstable`: Blender from `nixos-unstable`
 
 #### Nix Flake integration
