@@ -7,106 +7,32 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   build:
-    name: Build
+    name: Build (${{ matrix.package }})
     runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
-        system: [x86_64-linux]
+        package: [blender-with-cuda, blender-with-cuda-unstable]
     steps:
       - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-26.05
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
+          extra_nix_config: |
+            max-jobs = 2
+            cores = 3
       - name: Install Cachix
         uses: cachix/cachix-action@v16
         with:
           name: adithyagenie
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-      - name: Build and push
+          cachixArgs: -j1
+      - name: Build
         run: |
           set -euo pipefail
-
-          probe_cachix_path() {
-            local path="$1"
-            local hash payload
-            hash="${path#/nix/store/}"
-            hash="${hash%%-*}"
-            payload=$(printf '["%s"]' "$hash")
-
-            echo "store_path=$path"
-            echo "store_hash=$hash"
-            echo "local_path_info:"
-            nix path-info --json "$path" || true
-
-            echo "app_lookup_by_hash:"
-            curl -sS -X POST "https://app.cachix.org/api/v1/cache/adithyagenie/narinfo" \
-              -H "Content-Type: application/json" \
-              -d "$payload" || true
-            echo
-
-            echo "app_direct_narinfo_headers:"
-            curl -sS -D - -o /dev/null "https://app.cachix.org/api/v1/cache/adithyagenie/${hash}.narinfo" || true
-
-            echo "public_narinfo_headers:"
-            curl -sS -D - -o /dev/null "https://adithyagenie.cachix.org/${hash}.narinfo" || true
-          }
-
-          echo "::group::Nix environment"
-          nix --version
-          nix config show | sed -n \
-            -e '/^substituters /p' \
-            -e '/^extra-substituters /p' \
-            -e '/^trusted-public-keys /p' \
-            -e '/^extra-trusted-public-keys /p' \
-            -e '/^experimental-features /p'
-          echo "::endgroup::"
-
-          paths_file="$(mktemp)"
-          trap 'rm -f "$paths_file"' EXIT
-
-          nix build .#blender-with-cuda .#blender-with-cuda-unstable \
+          nix build ".#${{ matrix.package }}" \
             --print-out-paths \
-            --no-link >"$paths_file"
-
-          mapfile -t paths <"$paths_file"
-
-          if [ "${#paths[@]}" -eq 0 ]; then
-            echo "nix build did not print any output paths" >&2
-            exit 1
-          fi
-
-          echo "::group::Build outputs"
-          printf '%s\n' "${paths[@]}"
-          echo "::endgroup::"
-
-          for path in "${paths[@]}"; do
-            echo "::group::Pre-push probe: $path"
-            probe_cachix_path "$path"
-            echo "::endgroup::"
-          done
-
-          echo "::group::Cachix push"
-          if ! printf '%s\n' "${paths[@]}" | cachix push adithyagenie; then
-            echo "::warning::cachix push failed"
-          fi
-          echo "::endgroup::"
-
-          for path in "${paths[@]}"; do
-            echo "::group::Post-push probe: $path"
-            probe_cachix_path "$path"
-            echo "::endgroup::"
-          done
-
-          for path in "${paths[@]}"; do
-            narinfo_url="https://adithyagenie.cachix.org/$(basename "$path" | cut -d- -f1).narinfo"
-            if curl -fsS "$narinfo_url" >/dev/null; then
-              echo "Public cache serves: $path"
-            else
-              echo "::warning::Cached path is still unavailable from the public cache: $path"
-            fi
-          done
+            --no-link
