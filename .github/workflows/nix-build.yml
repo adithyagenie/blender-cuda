@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   build:
@@ -24,15 +25,21 @@ jobs:
           extra_nix_config: |
             max-jobs = 2
             cores = 3
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
+        with:
+          use-gha-cache: true
+          use-flakehub: false
       - name: Install Cachix
         uses: cachix/cachix-action@v16
         with:
           name: adithyagenie
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          useDaemon: false
+          pathsToPush: result
           cachixArgs: -j1
       - name: Build
         run: |
           set -euo pipefail
           nix build ".#${{ matrix.package }}" \
             --print-out-paths \
-            --no-link
+            --out-link result
